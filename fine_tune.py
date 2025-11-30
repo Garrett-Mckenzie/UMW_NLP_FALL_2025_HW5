@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, TensorDataset, DataLoader
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import sys
 from tqdm import tqdm
+from torch.optim import AdamW
 
 def load(filepath):
     corpus = None
@@ -38,6 +39,20 @@ def seperate(tokenizedCorpus,blockSize):
             target.append(y)
             pos += blockSize
     return (torch.tensor(np.array(train)),torch.tensor(np.array(target)))
+
+def tune(loader,model,epochs,lr):
+
+    optimizer = AdamW(model.parameters(),lr = lr)
+
+    while epochs > 0:
+        for x,y in loader):
+            y_hat = model(input_ids=x)
+            loss = F.cross_entropy(y_hat,y)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step() 
+        print(f"Done with epoch {epochs}")
+        epochs -= 1
         
 def main():
    
