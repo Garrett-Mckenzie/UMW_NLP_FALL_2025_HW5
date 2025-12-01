@@ -41,17 +41,18 @@ def seperate(tokenizedCorpus,blockSize):
     return (torch.tensor(np.array(train)),torch.tensor(np.array(target)))
 
 def tune(loader,model,epochs,lr):
+    print("Starting Training")
 
     optimizer = AdamW(model.parameters(),lr = lr)
 
     while epochs > 0:
-        for x,y in loader):
-            y_hat = model(input_ids=x)
+        for x,y in loader:
+            y_hat = model(input_ids=x).logits
             loss = F.cross_entropy(y_hat,y)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step() 
-        print(f"Done with epoch {epochs}")
+        print(f"Done with epoch {epochs} got a loss of {loss}")
         epochs -= 1
         
 def main():
@@ -80,6 +81,8 @@ def main():
     #make dataset and dataloader
     dataset = TensorDataset(x,y)
     loader = DataLoader(dataset,batch_size=32,shuffle=True)
+
+    tune(loader,model,10,0.0001)
 
 if __name__ == "__main__":
     main()    
