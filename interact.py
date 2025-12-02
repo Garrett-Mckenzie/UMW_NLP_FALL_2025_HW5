@@ -11,7 +11,7 @@ def load():
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
     return (model,tokenizer)
 
-def getOutput(x,model,tokenizer,maxWords = 100 , distributionSize = 1000 , temperature= 100):
+def getOutput(x,model,tokenizer,maxWords = 100 , distributionSize = 1000 , temperature= 10):
     input_ids = tokenizer(x,return_tensors='pt')['input_ids'].squeeze(0)
     return_string = ""
 
@@ -34,7 +34,7 @@ def getOutput(x,model,tokenizer,maxWords = 100 , distributionSize = 1000 , tempe
 
     return return_string
 
-def chat():
+def chat(maxWords, distributionSize, temperature):
     model,tokenizer = load()
     print("!! Welcome to the fine tune chat room !!\n")
     print("Below you can chat with the bot, whenever you are done simply type done to terminate the program.\n")
@@ -45,12 +45,40 @@ def chat():
             print("\n!!! Later Nerd !!!\n")
             return
 
-
-        response = getOutput(x,model,tokenizer)
+        response = getOutput(x,model,tokenizer,maxWords=maxWords,distributionSize=distributionSize,temperature=temperature)
         print("\nThe model said:\n" + response)
 
 def main():
-    chat()
+
+    temp = 10
+    if "--temp" in sys.argv:
+        try:
+            index = sys.argv.index("temperature")
+            temp = float(sys.argv[index + 1])
+            
+        except:
+            print("bad temp arg")
+            return
+    
+    maxWords = 100
+    if "--maxWords" in sys.argv:
+        try:
+            index = sys.argv.index("--maxWords")
+            maxWords = float(sys.argv[index + 1])
+        except:
+            print("bad maxWords arg")
+            return
+
+    distSize = 1000
+    if "--distSize" in sys.argv:
+        try:
+            index = sys.argv.index("--distSize")
+            distSize = float(sys.argv[index + 1])
+        except:
+            print("bad distSize arg")
+            return
+
+    chat(maxWords,distSize,temp)
 
 if __name__=="__main__":
     main()

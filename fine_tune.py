@@ -38,9 +38,17 @@ def seperate(tokenizedCorpus,blockSize):
             train.append(x)
             target.append(y)
             pos += blockSize
-    return (torch.tensor(np.array(train)),torch.tensor(np.array(target)))
+    
+    if torch.cuda.device_count() > 1:
+        x = torch.tensor(np.array(train)).to(torch.device("cuda:1"))
+        y = torch.tensor(np.array(target))
+        print("Training on GPU")
+        return (x,y,True)
+    else:
+        print("No GPU available")
+        return (torch.tensor(np.array(train)),torch.tensor(np.array(target)) , False)
 
-def tune(loader,model,epochs,lr,vocabLength,batchSize,testing=False,testingRuns=2):
+def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testingRuns=2):
     print("Starting Training")
 
     optimizer = AdamW(model.parameters(),lr = lr)
@@ -56,6 +64,9 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,testing=False,testingRuns=
                 for i in range(target.shape[1]):
                     target[j][i][y[j][i]] += 1
             target = torch.tensor(target).to(torch.float32)
+
+            if onGpu:
+                target = target.to(torch.device("cuda:1"))
 
             loss = F.cross_entropy(y_hat,target)
             loss.backward()
@@ -96,7 +107,7 @@ def main():
             return
 
     #seperate into x and y
-    x,y = seperate(tokenizedCorpus,128)
+    x,y,onGpu = seperate(tokenizedCorpus,128)
 
     #make dataset and dataloader
     dataset = TensorDataset(x,y)
@@ -126,7 +137,6 @@ def main():
             
     #run the tuning job
     print("Using the below arguments for tuning")
-    print(sys.argv)
     print("epochs: " + str(epochs))
     print("lr: " + str(lr))
     print("vocabLength: " + str(vocabLength))
@@ -135,7 +145,7 @@ def main():
     if testing:
         print("testingRuns: " + str(testingRuns))
 
-    tune(loader,model,epochs,lr,vocabLength,batchSize,testing=testing,testingRuns = testingRuns)
+    tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=testing,testingRuns = testingRuns)
     model.save_pretrained("./model")
     print("Done With Training! Model is saved to ./model")
 
