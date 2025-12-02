@@ -40,19 +40,34 @@ def seperate(tokenizedCorpus,blockSize):
             pos += blockSize
     return (torch.tensor(np.array(train)),torch.tensor(np.array(target)))
 
-def tune(loader,model,epochs,lr):
+def tune(loader,model,epochs,lr,vocabLength,batchSize,testing=False):
     print("Starting Training")
 
     optimizer = AdamW(model.parameters(),lr = lr)
 
     while epochs > 0:
+        batchCount = 0
+        if testing:
+            testingRuns = 2
         for x,y in loader:
             y_hat = model(input_ids=x).logits
-            loss = F.cross_entropy(y_hat,y)
-            optimizer.zero_grad()
+
+            #This is kinda gross but it works
+            target = np.zeros((batchSize , len(y[0]) , vocabLength))
+            for j in range(target.shape[0]):
+                for i in range(target.shape[1]):
+                    target[j][i][y[j][i]] += 1
+            target = torch.tensor(target).to(torch.float32)
+
+            loss = F.cross_entropy(y_hat,target)
             loss.backward()
             optimizer.step() 
-        print(f"Done with epoch {epochs} got a loss of {loss}")
+            optimizer.zero_grad()
+            print(f"Done with batch {batchCount} on epoch {epochs} with a loss of {loss}")
+            batchCount += 1
+            if batchCount > testingRuns:
+                return
+        print(f"Done with epoch {epochs}")
         epochs -= 1
         
 def main():
@@ -82,7 +97,9 @@ def main():
     dataset = TensorDataset(x,y)
     loader = DataLoader(dataset,batch_size=32,shuffle=True)
 
-    tune(loader,model,10,0.0001)
+    tune(loader,model,1,0.0001,len(tokenizer),32,testing=True)
+    model.save_pretrained("./model")
+    print("Done With Training! Model is saved to ./model")
 
 if __name__ == "__main__":
     main()    
