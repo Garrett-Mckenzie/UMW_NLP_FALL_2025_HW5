@@ -40,15 +40,13 @@ def seperate(tokenizedCorpus,blockSize):
             pos += blockSize
     return (torch.tensor(np.array(train)),torch.tensor(np.array(target)))
 
-def tune(loader,model,epochs,lr,vocabLength,batchSize,testing=False):
+def tune(loader,model,epochs,lr,vocabLength,batchSize,testing=False,testingRuns=2):
     print("Starting Training")
 
     optimizer = AdamW(model.parameters(),lr = lr)
 
     while epochs > 0:
         batchCount = 0
-        if testing:
-            testingRuns = 2
         for x,y in loader:
             y_hat = model(input_ids=x).logits
 
@@ -65,30 +63,37 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,testing=False):
             optimizer.zero_grad()
             print(f"Done with batch {batchCount} on epoch {epochs} with a loss of {loss}")
             batchCount += 1
-            if batchCount > testingRuns:
+            if testing and batchCount > testingRuns:
                 return
         print(f"Done with epoch {epochs}")
         epochs -= 1
         
 def main():
-   
-    if len(sys.argv) != 3:
-        print("To properly run this .py you must argue two things.\nFirst, a path to the text file you would like to use for finetuning.\nSecond, either y or n for wheter or not you would like to load in an already tokenized version of the fine-tuning data.")
-        exit()
 
     #load in data,tokenizer,and model
-    corpus = load(sys.argv[1])
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
     model = AutoModelForCausalLM.from_pretrained("distilgpt2")
 
     #tokenize the corpus
-    if (sys.argv[2] == "n"):
-        tokenizedCorpus = tokenize(corpus,tokenizer)
-        np.save("savepoint",tokenizedCorpus)
-    elif (sys.argv[2] == "y"):
-        tokenizedCorpus = np.load("savepoint.npy")
+    tokenizedCorpus = None
+    if "--useSaved" in sys.argv:
+        try:
+            index = sys.argv.index("--useSaved")
+            path = sys.argv[index + 1]
+            tokenizedCorpus = np.load(path)    
+        except Exception as e:
+            print(e)
+            print("if --useSaved is argued, a file path with the .npy extension must follow")
+            return
     else:
-        print("Bad parameter must be either y or n")
+        try:
+            corpus = load(sys.argv[1])
+            tokenizedCorpus = tokenize(corpus,tokenizer)
+            np.save("savepoint",tokenizedCorpus)
+        except Exception as e:
+            print(e)
+            print("if not providing a savepoint.npy a filepath with a .txt extension must be the only argument")
+            return
 
     #seperate into x and y
     x,y = seperate(tokenizedCorpus,128)
@@ -97,7 +102,40 @@ def main():
     dataset = TensorDataset(x,y)
     loader = DataLoader(dataset,batch_size=32,shuffle=True)
 
-    tune(loader,model,1,0.0001,len(tokenizer),32,testing=True)
+    epochs = 1
+    lr = 0.00001
+    vocabLength = len(tokenizer)
+    batchSize = 32
+    testing = False
+    testingRuns = 2
+    if "--testingArgs" in sys.argv:
+        try:
+            index = sys.argv.index("--testingArgs")
+            arguments = sys.argv[index + 1].split(":")
+            epochs = int(arguments[0])
+            lr = float(arguments[1])
+            batchSize = int(arguments[2])
+            testing = arguments[3]
+            if testing == "1":
+                testing = True
+            testingRuns = int(arguments[4])
+        except Exception as e:
+            print(e)
+            print("To specify --testingArgs follow the syntax --testingArgs epochs:lr:batchSize:testing:testingRuns")
+            return
+            
+    #run the tuning job
+    print("Using the below arguments for tuning")
+    print(sys.argv)
+    print("epochs: " + str(epochs))
+    print("lr: " + str(lr))
+    print("vocabLength: " + str(vocabLength))
+    print("batchSize: " + str(batchSize))
+    print("testing: " + str(testing))
+    if testing:
+        print("testingRuns: " + str(testingRuns))
+
+    tune(loader,model,epochs,lr,vocabLength,batchSize,testing=testing,testingRuns = testingRuns)
     model.save_pretrained("./model")
     print("Done With Training! Model is saved to ./model")
 

@@ -11,8 +11,9 @@ def load():
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
     return (model,tokenizer)
 
-def getOutput(x,model,tokenizer,maxWords = 100 , distributionSize = 1000 , temperature= 1):
+def getOutput(x,model,tokenizer,maxWords = 100 , distributionSize = 1000 , temperature= 100):
     input_ids = tokenizer(x,return_tensors='pt')['input_ids'].squeeze(0)
+    return_string = ""
 
     with torch.no_grad():
         for i in range(maxWords):
@@ -20,32 +21,33 @@ def getOutput(x,model,tokenizer,maxWords = 100 , distributionSize = 1000 , tempe
             output = model(input_ids=input_ids.unsqueeze(0))
             next_logits = output.logits[0,-1,:]
 
-            #temperature and get topk
-            adjusted_logits = next_logits * (1/temperature) 
-            next_logits, next_tokens = torch.topk(adjusted_logits,distributionSize)
+            #temperature and get topk 
+            vals , ids = torch.topk((next_logits / temperature),distributionSize)
 
             #get out probs and indx
-            probs = torch.softmax(adjusted_logits,dim = -1)
-            chosen_indx = torch.multinomial(probs , num_samples = 1)
+            probs = torch.softmax(vals,dim = -1)
+            chosen_index = torch.multinomial(probs , num_samples = 1)
+            chosen_id = ids[chosen_index]
 
-            #get out the next token
-            token = next_tokens[chosen_indx]
-            input_ids = torch.cat([input_ids,token])
-            print(tokenizer.decode(token),end = "")
+            input_ids = torch.cat([input_ids,chosen_id])
+            return_string += tokenizer.decode(chosen_id)
+
+    return return_string
 
 def chat():
     model,tokenizer = load()
     print("!! Welcome to the fine tune chat room !!\n")
     print("Below you can chat with the bot, whenever you are done simply type done to terminate the program.\n")
     while True:
-        x = input("Type something to the model: ")
+        x = input("\nType something to the model:\n")
 
         if x == "done":
-            print("!!! Later Nerd !!!")
+            print("\n!!! Later Nerd !!!\n")
             return
 
+
         response = getOutput(x,model,tokenizer)
-        print("The model said: " + response)
+        print("\nThe model said:\n" + response)
 
 def main():
     chat()
