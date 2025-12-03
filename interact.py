@@ -6,8 +6,8 @@ from transformers import AutoTokenizer , AutoModelForCausalLM
 import sys
 from tqdm import tqdm
 
-def load():
-    model = AutoModelForCausalLM.from_pretrained("./model")
+def load(modelPath = "./model"):
+    model = AutoModelForCausalLM.from_pretrained(modelPath)
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
     return (model,tokenizer)
 
@@ -34,8 +34,14 @@ def getOutput(x,model,tokenizer,maxWords = 100 , distributionSize = 1000 , tempe
 
     return return_string
 
-def chat(maxWords, distributionSize, temperature):
-    model,tokenizer = load()
+def chat(maxWords, distributionSize, temperature,modelPath=None):
+    model = None
+    tokenizer = None
+
+    if modelPath == None:
+        model,tokenizer = load()
+    else:
+        model,tokenizer = load(modelPath)
     print("!! Welcome to the fine tune chat room !!\n")
     print("Below you can chat with the bot, whenever you are done simply type done to terminate the program.\n")
     while True:
@@ -78,7 +84,16 @@ def main():
             print("bad distSize arg")
             return
 
-    chat(maxWords,distSize,temp)
+    modelPath = None
+    if "--modelPath" in sys.argv:
+        try:
+            index = sys.argv.index("--modelPath")
+            modelPath = sys.argv[index + 1]
+        except:
+            print("bad model path")
+            return
+
+    chat(maxWords,distSize,temp,modelPath)
 
 if __name__=="__main__":
     main()
