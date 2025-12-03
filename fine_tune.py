@@ -60,10 +60,15 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testin
 
             #This is kinda gross but it works
             target = np.zeros((batchSize , len(y[0]) , vocabLength))
+
+            print(y.shape)
+            print(target.shape)
+
             for j in range(target.shape[0]):
                 for i in range(target.shape[1]):
                     target[j][i][y[j][i]] += 1
             target = torch.tensor(target).to(torch.float32)
+            print(y_hat.shape)
 
             if onGpu:
                 target = target.to(torch.device("cuda:0"))
@@ -115,15 +120,13 @@ def main():
     if onGpu:
         model.to(torch.device("cuda:0"))
 
-
     #make dataset and dataloader
     dataset = TensorDataset(x,y)
-    loader = DataLoader(dataset,batch_size=32,shuffle=True)
 
     epochs = 1
     lr = 0.00001
     vocabLength = len(tokenizer)
-    batchSize = 32
+    batchSize = 128
     testing = False
     testingRuns = 2
     if "--testingArgs" in sys.argv:
@@ -141,6 +144,8 @@ def main():
             print(e)
             print("To specify --testingArgs follow the syntax --testingArgs epochs:lr:batchSize:testing:testingRuns")
             return
+
+    loader = DataLoader(dataset,batch_size=batchSize,shuffle=True)
             
     #run the tuning job
     print("Using the below arguments for tuning")
