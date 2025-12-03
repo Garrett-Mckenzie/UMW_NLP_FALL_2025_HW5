@@ -39,8 +39,8 @@ def seperate(tokenizedCorpus,blockSize):
             target.append(y)
             pos += blockSize
     
-    if torch.cuda.device_count() > 1:
-        x = torch.tensor(np.array(train)).to(torch.device("cuda:1"))
+    if torch.cuda.is_available():
+        x = torch.tensor(np.array(train)).to(torch.device("cuda:0"))
         y = torch.tensor(np.array(target))
         print("Training on GPU")
         return (x,y,True)
@@ -66,12 +66,15 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testin
             target = torch.tensor(target).to(torch.float32)
 
             if onGpu:
-                target = target.to(torch.device("cuda:1"))
+                target = target.to(torch.device("cuda:0"))
 
             loss = F.cross_entropy(y_hat,target)
             loss.backward()
             optimizer.step() 
             optimizer.zero_grad()
+
+            #Move target back to cpu to clear up gpu
+            target.detach().cpu()
             print(f"Done with batch {batchCount} on epoch {epochs} with a loss of {loss}")
             batchCount += 1
             if testing and batchCount > testingRuns:
@@ -108,6 +111,10 @@ def main():
 
     #seperate into x and y
     x,y,onGpu = seperate(tokenizedCorpus,128)
+
+    if onGpu:
+        model.to(torch.device("cuda:0"))
+
 
     #make dataset and dataloader
     dataset = TensorDataset(x,y)
