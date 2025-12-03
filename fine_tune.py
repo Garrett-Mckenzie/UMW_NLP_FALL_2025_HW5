@@ -61,14 +61,10 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testin
             #This is kinda gross but it works
             target = np.zeros((batchSize , len(y[0]) , vocabLength))
 
-            print(y.shape)
-            print(target.shape)
-
             for j in range(target.shape[0]):
                 for i in range(target.shape[1]):
                     target[j][i][y[j][i]] += 1
             target = torch.tensor(target).to(torch.float32)
-            print(y_hat.shape)
 
             if onGpu:
                 target = target.to(torch.device("cuda:0"))
@@ -126,7 +122,7 @@ def main():
     epochs = 1
     lr = 0.00001
     vocabLength = len(tokenizer)
-    batchSize = 128
+    batchSize = 64
     testing = False
     testingRuns = 2
     if "--testingArgs" in sys.argv:
