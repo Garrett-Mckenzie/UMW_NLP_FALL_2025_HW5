@@ -59,6 +59,7 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testin
     print("Starting Training")
 
     optimizer = AdamW(model.parameters(),lr = lr)
+    count = epochs - 1
 
     while epochs > 0:
         batchCount = 0
@@ -83,11 +84,12 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testin
 
             #Move target back to cpu to clear up gpu
             target.detach().cpu()
-            print(f"Done with batch {batchCount} on epoch {epochs} with a loss of {loss}")
+            print(f"Done with batch {batchCount} on epoch {epochs-count} with a loss of {loss}")
             batchCount += 1
             if testing and batchCount > testingRuns:
                 return
-        print(f"Done with epoch {epochs}")
+        print(f"Done with epoch {epochs-count}")
+        torch.cuda.empty_cache()
         epochs -= 1
 
 def main():
