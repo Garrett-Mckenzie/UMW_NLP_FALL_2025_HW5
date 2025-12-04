@@ -56,10 +56,10 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testin
     while epochs > 0:
         batchCount = 0
         for x,y in loader:
+            
             y_hat = model(input_ids=x).logits
-
             #This is kinda gross but it works
-            target = np.zeros((batchSize , len(y[0]) , vocabLength))
+            target = np.zeros((x.shape[0] , len(y[0]) , vocabLength))
 
             for j in range(target.shape[0]):
                 for i in range(target.shape[1]):
