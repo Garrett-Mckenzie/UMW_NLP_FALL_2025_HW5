@@ -7,38 +7,45 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import sys
 from tqdm import tqdm
 from torch.optim import AdamW
+import re
 
 def load(filepath):
     corpus = None
     with open(filepath , 'r') as file:
         corpus = file.read()
+        corpus = re.sub(r"<EOD>","",corpus)
+        corpus = re.sub(r"</s>","",corpus)
         corpus = corpus.split("\n")
     for i in tqdm(range(len(corpus))):
         corpus[i] = corpus[i].strip() #removes whitespace
     return corpus
 
 def tokenize(corpus,tokenizer):
-    returnMe = np.array([]).astype(int)
+    returnMe = np.array([])
+    count = 1
     for i in tqdm(range(len(corpus))):
         doc = corpus[i]
         returnMe = np.append(returnMe,tokenizer(doc,return_tensors="np")["input_ids"].squeeze(0))
-    return returnMe
+        count += 1
+    return returnMe.astype(int)
 
 def seperate(tokenizedCorpus,blockSize):
     length = len(tokenizedCorpus)
     train = []
     target = []
     pos = 0
-    while True:
-        if pos + blockSize >= length:
-            break
-        else:
-            x = tokenizedCorpus[pos:pos + blockSize - 1]
-            y = tokenizedCorpus[pos + 1:pos + blockSize]
-            train.append(x)
-            target.append(y)
-            pos += blockSize
-    
+    with tqdm(total = (len(tokenizedCorpus) // blockSize) - 1) as pbar:
+        while True:
+            if pos + blockSize + 1 >= length:
+                break
+            else:
+                x = tokenizedCorpus[pos:pos + blockSize]
+                y = tokenizedCorpus[pos + 1:pos + blockSize + 1]
+                train.append(x)
+                target.append(y)
+                pos += blockSize
+            pbar.update(1)
+        
     if torch.cuda.is_available():
         x = torch.tensor(np.array(train)).to(torch.device("cuda:0"))
         y = torch.tensor(np.array(target))
@@ -82,7 +89,7 @@ def tune(loader,model,epochs,lr,vocabLength,batchSize,onGpu,testing=False,testin
                 return
         print(f"Done with epoch {epochs}")
         epochs -= 1
-        
+
 def main():
 
     #load in data,tokenizer,and model
