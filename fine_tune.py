@@ -142,6 +142,8 @@ def main():
             testing = arguments[3]
             if testing == "1":
                 testing = True
+            else:
+                testing = False
             testingRuns = int(arguments[4])
         except Exception as e:
             print(e)
