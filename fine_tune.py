@@ -128,10 +128,10 @@ def main():
     #make dataset and dataloader
     dataset = TensorDataset(x,y)
 
-    epochs = 1
-    lr = 0.00001
+    epochs = 5
+    lr = 0.0001
     vocabLength = len(tokenizer)
-    batchSize = 64
+    batchSize = 48
     testing = False
     testingRuns = 2
     if "--testingArgs" in sys.argv:
