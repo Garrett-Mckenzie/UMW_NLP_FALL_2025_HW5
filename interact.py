@@ -59,7 +59,7 @@ def main():
     temp = 10
     if "--temp" in sys.argv:
         try:
-            index = sys.argv.index("temperature")
+            index = sys.argv.index("--temp")
             temp = float(sys.argv[index + 1])
             
         except:
